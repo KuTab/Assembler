@@ -1,0 +1,429 @@
+; -------------------------------------------------------------------------------------
+
+ format PE GUI 4.0
+
+ entry start
+
+ include 'win32a.inc'
+
+; -------------------------------------------------------------------------------------
+
+ IDD_THE_DIALOG = 102
+
+ IDC_OUTPUT = 1000
+
+ IDC_BTN_CALC = 1001
+ IDC_BTN_RESET = 1002
+
+; -------------------------------------------------------------------------------------
+
+ section '.code' code readable executable
+
+  start:
+
+    invoke GetModuleHandle,0
+    invoke DialogBoxParam,eax,IDD_THE_DIALOG,0,DialogProc,0
+
+  exit:
+
+    invoke  ExitProcess,0 
+
+; -------------------------------------------------------------------------------------
+
+proc DialogProc uses esi edi ebx,hwnddlg,msg,wparam,lparam
+
+        cmp [msg],WM_INITDIALOG
+        je .wminitdialog
+
+        cmp [msg],WM_COMMAND
+        je .wmcommand
+
+        cmp [msg],WM_CLOSE
+        je .wmclose
+
+        xor eax,eax
+        jmp .quit
+
+  .wminitdialog:
+
+        invoke SetDlgItemText,[hwnddlg],IDC_OUTPUT,""
+
+        jmp .done
+
+  .wmcommand:
+
+        cmp [wparam], BN_CLICKED shl 16 + IDC_BTN_CALC
+        je .CALC
+
+        cmp  [wparam], BN_CLICKED shl 16 + IDC_BTN_RESET
+        je .RESET
+
+    jmp .done
+
+  .CALC:
+
+        stdcall CalcSieve
+
+        stdcall PrintPrimes
+
+        invoke SetDlgItemText,[hwnddlg],IDC_OUTPUT,bfDisplay
+
+        jmp .done
+
+  .RESET:
+
+        invoke SetDlgItemText,[hwnddlg],IDC_OUTPUT,""
+
+        jmp .done
+
+  .wmclose:
+
+        invoke EndDialog,[hwnddlg],0
+
+  .done:
+
+        mov eax,1
+
+  .quit:
+
+        ret
+
+endp
+
+; -------------------------------------------------------------------------------------
+
+proc CalcSieve uses esi edi ebx ecx
+
+  ; generate the prime number sieve
+
+        lea esi,[FactorBase]
+
+        lea edi,[FactorBase]
+
+        xor ecx,ecx
+
+  .CLEAR:
+
+        mov [edi+ecx],byte 0
+
+        inc cx
+
+        cmp cx,4096
+
+        jl .CLEAR
+
+        ; Factor Base array: 4096 bytes = 32768 bits
+
+        ; all the odd numbers from 1 to 65535
+
+        ; bit_index = 0 to 32767
+
+        ; 1 at bit_index 0 divides everything:
+
+        mov [edi],byte 1
+
+        ; EBX = bit_index
+
+        ; number = 1 + (2 x bit_index)
+
+        xor ebx,ebx
+
+        ; start at bit_index = 1 (3)
+
+        inc ebx
+
+  .SIEVE:
+
+        mov edx,ebx
+
+        ; EAX = 1 + (bit_index x 2)
+
+        mov eax,ebx
+
+        shl eax,1
+
+        inc eax
+
+  .SET_1:
+
+        ; mark as composite by setting the bit to 1
+
+        add edx,eax
+
+        cmp edx,32767
+
+        jg .NEXT
+
+        ; EDX gives the bit index, set the bit at this index to 1
+
+        ; get the byte index
+
+        mov ecx,edx
+
+        shr ecx,3
+
+        mov edi,esi
+
+        add edi,ecx
+
+        ; get the bit index
+
+        mov ecx,edx
+
+        and ecx,7
+
+        mov ch,1
+
+        shl ch,cl
+
+        ; set the bit
+
+        or [edi],ch
+
+        jmp .SET_1
+
+  .NEXT:
+
+        inc ebx
+
+        cmp ebx,32767
+
+        jl .SIEVE
+
+        ret
+
+endp
+
+; -------------------------------------------------------------------------------------
+
+proc PrintPrimes uses esi edi ecx
+
+  ; identify all of the numbers in FactorBase that are prime and print them
+
+        locals
+
+          bit db 0
+
+          bit_index dw 0
+
+        endl
+
+        lea esi,[FactorBase]
+
+        lea edi,[bfDisplay]
+
+        xor ecx,ecx
+
+  .NEXT:
+
+        ; get the byte
+
+        mov dl,[esi+ecx]
+
+  .PRINT:
+
+        ; test each bit in the byte
+
+        shr dl,1
+
+        jc .NEXT_BIT
+
+        ; the bit is 0, so print the number
+
+        ; number = 1 + (2 x bit_index)
+
+        xor eax,eax
+
+        mov ax,[bit_index]
+
+        shl eax,1
+
+        inc eax
+
+        ; print as a decimal number
+
+        stdcall HexToDec
+
+  .NEXT_BIT:
+
+        ; get the next bit
+
+        inc word [bit_index]
+
+        inc byte [bit]
+
+        cmp [bit],8
+
+        jl .PRINT
+
+  .NEXT_BYTE:
+
+        mov [bit],byte 0
+
+        inc cx
+
+        cmp cx,4096
+
+        jl .NEXT
+
+  .DONE:
+
+        mov [edi],byte 0
+
+        ret
+
+endp
+
+; -------------------------------------------------------------------------------------
+
+proc HexToDec uses ecx edx
+
+  ; convert the hex number in AX to a decimal string
+
+  ; EDI is the destination string
+
+  ; EDI is set outside of this procedure
+
+        locals
+
+          power db 4
+
+          digit db 0
+
+        endl
+
+        ; the largest number that AX can hold is 65536
+
+        ; so start with 10 to the power of 4
+
+  .CONVERT:
+
+        xor cx,cx
+
+        mov cl,[power]
+
+        stdcall Power_of_Ten
+
+        mov [digit],byte 0
+
+  .SUB:
+
+        ; subtract powers of ten to get the left most decimal digit
+
+        cmp eax,edx
+
+        jl .NEXT
+
+        sub eax,edx
+
+        inc [digit]
+
+        jmp .SUB
+
+  .NEXT:
+
+        ; add the digit to the output string
+
+        mov bl,[digit]
+
+        mov [edi],bl
+
+        add [edi],byte 48
+
+        inc edi
+
+        dec [power]
+
+        cmp [power],0
+
+        jge .CONVERT
+
+        mov [edi],byte 32
+
+        inc edi
+
+        ret
+
+endp
+
+; -------------------------------------------------------------------------------------
+
+proc Power_of_Ten
+
+  ; the power of ten is in CL
+
+        mov edx,1
+
+  .x10:
+
+        cmp cx,0
+
+        je .DONE
+
+        ; multiply EDX by 10
+
+        mov ebx,edx
+
+        shl edx,3
+
+        shl ebx,1
+
+        add edx,ebx
+
+        dec cx
+
+        jmp .x10
+
+  .DONE:
+
+        ret
+
+endp
+
+; -------------------------------------------------------------------------------------
+
+section '.idata' import data readable writeable
+
+  library kernel,'KERNEL32.DLL',\
+          user,'USER32.DLL'
+
+  import kernel,\
+         GetModuleHandle,'GetModuleHandleA',\
+         ExitProcess,'ExitProcess'
+
+  import user,\
+         DialogBoxParam,'DialogBoxParamA',\ 
+         SetDlgItemText,'SetDlgItemTextA',\
+         EndDialog,'EndDialog'
+
+; -------------------------------------------------------------------------------------
+
+section '.data' readable writeable
+
+  bfDisplay rb 64000
+
+  FactorBase rb 4096
+
+; -------------------------------------------------------------------------------------
+
+section '.rc' resource data readable
+
+  directory RT_DIALOG,dialogs
+
+  resource dialogs,IDD_THE_DIALOG,LANG_ENGLISH+SUBLANG_DEFAULT,the_dialog
+
+  dialog the_dialog,\
+  'Prime Number Sieve',50,50,360,396,\
+  DS_MODALFRAME+WS_MINIMIZEBOX+WS_POPUP+WS_VISIBLE+WS_CAPTION+WS_SYSMENU,\
+  0,0,"Lucida Console",11
+
+  dialogitem 'BUTTON',"Output",-1,7,7,346,360,BS_GROUPBOX+WS_VISIBLE,0
+
+  dialogitem 'EDIT',0,IDC_OUTPUT,13,18,335,340,ES_MULTILINE+ES_AUTOVSCROLL+ES_WANTRETURN+WS_VSCROLL+WS_BORDER+WS_VISIBLE,0
+
+  dialogitem 'BUTTON',"CALC",IDC_BTN_CALC,7,375,80,14,BS_PUSHBUTTON+WS_VISIBLE,0
+  dialogitem 'BUTTON',"RESET",IDC_BTN_RESET,89,375,80,14,BS_PUSHBUTTON+WS_VISIBLE,0
+
+  enddialog
+
+; ------------------------------------------------------------------------------- 
