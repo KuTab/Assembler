@@ -1,4 +1,4 @@
-# Assembler
+# Семинар 1
 
 # Пример 1: Hello world
 
