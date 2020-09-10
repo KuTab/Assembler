@@ -2,7 +2,7 @@
 
 Пример 1: Hello world
 
-Данная программа(Hello World в папке Seminar1) создает окно с надписью Hello world
+Данная программа(Hello World в папке Seminar1) создает окно с надписью Hello World!
 
 ![alt text](Screenshots/HelloWorld.png)
 
