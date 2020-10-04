@@ -78,12 +78,12 @@
 
 Результат работы при одном отрицательном элементе
 
-![alt text](Screenshots/Arrays1.png)
+![alt text](Screenshots/Array1.png)
 
 Результат работы при отсутствии отрицательных элементов
 
-![alt text](Screenshots/Arrays2.png)
+![alt text](Screenshots/Array2.png)
 
 Результат работы при нескольких отрицательных элементах
 
-![alt text](Screenshots/Arrays3.png)
+![alt text](Screenshots/Array3.png)
