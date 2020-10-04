@@ -4,12 +4,12 @@
 
 Результат работы при одном отрицательном элементе
 
-![alt text](Screenshots/Array1.png)
+![alt text](Assembler/Screenshots/Array1.png)
 
 Результат работы при отсутствии отрицательных элементов
 
-![alt text](Screenshots/Array2.png)
+![alt text](Assembler/Screenshots/Array2.png)
 
 Результат работы при нескольких отрицательных элементах
 
-![alt text](Screenshots/Array3.png)
+![alt text](Assembler/Screenshots/Array3.png)
